@@ -16,7 +16,7 @@ import time
 
 from aligo import Aligo
 
-exclude_names = ['log', 'backups']  # 排除目录名
+exclude_names = ['log', '.git', '.github', 'node_modules', 'backups']  # 排除目录名
 backups_path = 'backups'  # 备份目标目录
 
 
