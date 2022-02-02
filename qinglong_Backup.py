@@ -22,27 +22,45 @@ try:
 except:
     logger.info("无推送文件")
 
-exclude_names = ['log', '.git', '.github', 'node_modules', 'backups']  # 排除目录名
-backups_path = 'backups'  # 备份目标目录
+
+def env(key):
+    return os.environ.get(key)
+
+
+QLBK_EXCLUDE_NAMES = ['log', '.git', '.github',
+                      'node_modules', 'backups']  # 排除目录名
+if env("QLBK_EXCLUDE_NAMES"):
+    QLBK_EXCLUDE_NAMES = env("QLBK_EXCLUDE_NAMES")
+    logger.info(f'检测到设置变量 {QLBK_EXCLUDE_NAMES}')
+
+QLBK_BACKUPS_PATH = 'backups'  # 备份目标目录
+if env("QLBK_BACKUPS_PATH"):
+    QLBK_BACKUPS_PATH = str(env("QLBK_BACKUPS_PATH"))
+    logger.info(f'检测到设置变量 {QLBK_BACKUPS_PATH}')
+
+QLBK_MAX_FLIES = 5  # 最大备份保留数量默认5个
+if env("QLBK_MAX_FLIES"):
+    QLBK_MAX_FLIES = int(env("QLBK_MAX_FLIES"))
+    logger.info(f'检测到设置变量 {QLBK_MAX_FLIES}')
 
 
 def start():
     """开始备份"""
     logger.info('将所需备份目录文件进行压缩...')
     retval = os.getcwd()
-    mkdir(backups_path)
+    mkdir(QLBK_BACKUPS_PATH)
     now_time = time.strftime("%Y%m%d_%H%M%S", time.localtime())
-    files_name = f'{backups_path}/qinglong_{now_time}.tar.gz'
+    files_name = f'{QLBK_BACKUPS_PATH}/qinglong_{now_time}.tar.gz'
     logger.info(f'创建备份文件: {retval}/{files_name}')
     if make_targz(files_name, retval):
         logger.info('备份文件压缩完成...开始上传至阿里云盘')
-        remote_folder = ali.get_file_by_path(f'ql/{backups_path}')  # 云盘目录
-        ali.sync_folder(f'{retval}/{backups_path}/',  # 上传至网盘
+        remote_folder = ali.get_file_by_path(f'ql/{QLBK_BACKUPS_PATH}')  # 云盘目录
+        ali.sync_folder(f'{retval}/{QLBK_BACKUPS_PATH}/',  # 上传至网盘
                         flag=True,
                         remote_folder=remote_folder.file_id)
         message_up_time = time.strftime(
             "%Y年%m月%d日 %H时%M分%S秒", time.localtime())
-        text = f'已备份至阿里网盘:\nql/{backups_path}/qinglong_{now_time}.tar.gz\n' \
+        text = f'已备份至阿里网盘:\nql/{QLBK_BACKUPS_PATH}/qinglong_{now_time}.tar.gz\n' \
                f'\n备份完成时间:\n{message_up_time}\n' \
                f'\n项目: https://github.com/Ukenn2112/qinglong_Backup'
         try:
@@ -71,7 +89,7 @@ def make_targz(output_filename, retval):
         path = os.listdir(os.getcwd())
         for p in path:
             if os.path.isdir(p):
-                if p not in exclude_names:
+                if p not in QLBK_EXCLUDE_NAMES:
                     pathfile = os.path.join(retval, p)
                     tar.add(pathfile)
         tar.close()
@@ -85,17 +103,16 @@ def mkdir(path):
     """创建备份目录"""
     folder = os.path.exists(path)
     if not folder:  # 判断是否存在文件夹如果不存在则创建为文件夹
-        logger.info(f'第一次备份,创建备份目录: {backups_path}')
+        logger.info(f'第一次备份,创建备份目录: {QLBK_BACKUPS_PATH}')
         os.makedirs(path)  # 创建文件时如果路径不存在会创建这个路径
     else:  # 如有备份文件夹则检查备份文件数量
-        max_files_saved = 5
         backup_files = f'/ql/{path}'
         files_all = os.listdir(backup_files)  # backup_files中的所有文件
-        logger.info(f'当前备份文件共 {len(files_all)} 个')
+        logger.info(f'当前备份文件 {len(files_all)}/{QLBK_MAX_FLIES}')
         files_num = len(files_all)
-        if files_num > max_files_saved:
-            logger.info('达到最大备份数量')
-            check_files(files_all, files_num, backup_files, max_files_saved)
+        if files_num > QLBK_MAX_FLIES:
+            logger.info(f'达到最大备份数量 {QLBK_MAX_FLIES} 个')
+            check_files(files_all, files_num, backup_files, QLBK_MAX_FLIES)
 
 
 def show(qr_link: str):
@@ -119,7 +136,7 @@ def fileremove(filename):
         pass
 
 
-def check_files(files_all, files_num, backup_files, max_files_saved):
+def check_files(files_all, files_num, backup_files, QLBK_MAX_FLIES):
     """检查旧的备份文件"""
     create_time = []
     file_name = []
@@ -132,7 +149,7 @@ def check_files(files_all, files_num, backup_files, max_files_saved):
     dit = dict(zip(create_time, file_name))
     # 根据dit的key对dit进行排序（变为list）
     dit = sorted(dit.items(), key=lambda d: d[-2], reverse=False)
-    for i in range(files_num - max_files_saved):  # 删除文件个数
+    for i in range(files_num - QLBK_MAX_FLIES):  # 删除文件个数
         file_location = dit[i][1]
         fileremove(file_location)
 
