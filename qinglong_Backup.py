@@ -37,8 +37,8 @@ def start():
     if make_targz(files_name, retval):
         logger.info('备份文件压缩完成...开始上传至阿里云盘')
         remote_folder = ali.get_file_by_path(f'ql/{backups_path}')  # 云盘目录
-        ali.sync_folder(f'{retval}/{backups_path}/',
-                        flag=True,  # 以本地为主
+        ali.sync_folder(f'{retval}/{backups_path}/',  # 上传至网盘
+                        flag=True,
                         remote_folder=remote_folder.file_id)
         message_up_time = time.strftime(
             "%Y年%m月%d日 %H时%M分%S秒", time.localtime())
