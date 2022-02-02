@@ -4,8 +4,8 @@
 项目名称: Ukenn2112 / qinglong_Backup
 Author: Ukenn2112
 功能：自动备份qinglong基本文件至阿里云盘
-Date: 2022/02/03 上午10:00
-cron: 0 0 * * *
+Date: 2022/02/03 上午12:00
+cron: 0 2 * * *
 new Env('qinglong备份');
 '''
 import logging
@@ -27,17 +27,7 @@ backups_path = 'backups'  # 备份目标目录
 
 
 def start():
-    """开始运行"""
-    logger.info('登录阿里云盘')
-    try:
-        ali = Aligo(level=logging.INFO, show=show)
-    except:
-        logger.info('登录失败')
-        try:
-            send('qinglong自动备份', '阿里网盘登录失败,请手动重新运行本脚本登录')
-        except:
-            logger.info("通知发送失败")
-        sys.exit(1)
+    """开始备份"""
     logger.info('将所需备份目录文件进行压缩...')
     retval = os.getcwd()
     mkdir(backups_path)
@@ -46,22 +36,23 @@ def start():
     logger.info(f'创建备份文件: {retval}/{files_name}')
     if make_targz(files_name, retval):
         logger.info('备份文件压缩完成...开始上传至阿里云盘')
-        remote_folder = ali.get_file_by_path('qinglong_backups')  # 云盘目录
+        remote_folder = ali.get_file_by_path(f'ql/{backups_path}')  # 云盘目录
         ali.sync_folder(f'{retval}/{backups_path}/',
                         flag=True,  # 以本地为主
-                        remote_folder=remote_folder.file_id)  # 本地目录
-        message_up_time = time.strftime("%Y年%m月%d日 %H时%M分%S秒", time.localtime())
-        text = f'已备份至阿里网盘: qinglong_backups/qinglong_{now_time}.tar.gz\n' \
-               f'备份时间: {message_up_time}\n' \
-               f'\n来自项目: https://github.com/Ukenn2112/qinglong_Backup'
+                        remote_folder=remote_folder.file_id)
+        message_up_time = time.strftime(
+            "%Y年%m月%d日 %H时%M分%S秒", time.localtime())
+        text = f'已备份至阿里网盘:\nql/{backups_path}/qinglong_{now_time}.tar.gz\n' \
+               f'\n备份完成时间:\n{message_up_time}\n' \
+               f'\n项目: https://github.com/Ukenn2112/qinglong_Backup'
         try:
-            send('qinglong自动备份', text)
+            send('【qinglong自动备份】', text)
         except:
             logger.info("通知发送失败")
         logger.info('---------------------备份完成---------------------')
     else:
         try:
-            send('qinglong自动备份', '备份压缩失败,请检查日志')
+            send('【qinglong自动备份】', '备份压缩失败,请检查日志')
         except:
             logger.info("通知发送失败")
         sys.exit(1)
@@ -96,8 +87,15 @@ def mkdir(path):
     if not folder:  # 判断是否存在文件夹如果不存在则创建为文件夹
         logger.info(f'第一次备份,创建备份目录: {backups_path}')
         os.makedirs(path)  # 创建文件时如果路径不存在会创建这个路径
-    else:
-        pass
+    else:  # 如有备份文件夹则检查备份文件数量
+        max_files_saved = 5
+        backup_files = f'/ql/{path}'
+        files_all = os.listdir(backup_files)  # backup_files中的所有文件
+        logger.info(f'当前备份文件共 {len(files_all)} 个')
+        files_num = len(files_all)
+        if files_num > max_files_saved:
+            logger.info('达到最大备份数量')
+            check_files(files_all, files_num, backup_files, max_files_saved)
 
 
 def show(qr_link: str):
@@ -106,9 +104,52 @@ def show(qr_link: str):
     logger.info(f'https://cli.im/api/qrcode/code?text={qr_link}')
 
 
+def fileremove(filename):
+    """删除旧的备份文件"""
+    if os.path.exists(filename):
+        os.remove(filename)
+        logger.info('已删除本地旧的备份文件: %s' % filename)
+        remote_folder = ali.get_file_by_path(filename)  # 待删除文件 ID
+        if remote_folder is not None:
+            ali.move_file_to_trash(file_id=remote_folder.file_id)
+            logger.info('已删除云盘旧的备份文件: %s' % filename)
+        else:
+            logger.info('未找到云端旧的备份文件: %s' % filename)
+    else:
+        pass
+
+
+def check_files(files_all, files_num, backup_files, max_files_saved):
+    """检查旧的备份文件"""
+    create_time = []
+    file_name = []
+    for names in files_all:
+        if names.endswith(".tar.gz"):
+            filename = os.path.join(backup_files, names)
+            file_name.append(filename)
+            create_time.append(os.path.getctime(filename))  # 获取文件的修改时间
+    # 将两个list转换为dict
+    dit = dict(zip(create_time, file_name))
+    # 根据dit的key对dit进行排序（变为list）
+    dit = sorted(dit.items(), key=lambda d: d[-2], reverse=False)
+    for i in range(files_num - max_files_saved):  # 删除文件个数
+        file_location = dit[i][1]
+        fileremove(file_location)
+
+
 if __name__ == '__main__':
     nowtime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
     logger.info('---------' + str(nowtime) + ' 备份程序开始执行------------')
     os.chdir('/ql/')  # 设置运行目录
+    logger.info('登录阿里云盘')
+    try:
+        ali = Aligo(level=logging.INFO, show=show)
+    except:
+        logger.info('登录失败')
+        try:
+            send('【qinglong自动备份】', '阿里网盘登录失败,请手动重新运行本脚本登录')
+        except:
+            logger.info("通知发送失败")
+        sys.exit(1)
     start()
     sys.exit(0)
