@@ -54,13 +54,13 @@ def start():
     logger.info(f'创建备份文件: {retval}/{files_name}')
     if make_targz(files_name, retval):
         logger.info('备份文件压缩完成...开始上传至阿里云盘')
-        remote_folder = ali.get_file_by_path(f'ql/{QLBK_BACKUPS_PATH}')  # 云盘目录
+        remote_folder = ali.get_file_by_path(f'{run_path}/{QLBK_BACKUPS_PATH}')  # 云盘目录
         ali.sync_folder(f'{retval}/{QLBK_BACKUPS_PATH}/',  # 上传至网盘
                         flag=True,
                         remote_folder=remote_folder.file_id)
         message_up_time = time.strftime(
             "%Y年%m月%d日 %H时%M分%S秒", time.localtime())
-        text = f'已备份至阿里网盘:\nql/{QLBK_BACKUPS_PATH}/qinglong_{now_time}.tar.gz\n' \
+        text = f'已备份至阿里网盘:\n{run_path}{QLBK_BACKUPS_PATH}/qinglong_{now_time}.tar.gz\n' \
                f'\n备份完成时间:\n{message_up_time}\n' \
                f'\n项目: https://github.com/Ukenn2112/qinglong_Backup'
         try:
@@ -106,7 +106,7 @@ def mkdir(path):
         logger.info(f'第一次备份,创建备份目录: {QLBK_BACKUPS_PATH}')
         os.makedirs(path)  # 创建文件时如果路径不存在会创建这个路径
     else:  # 如有备份文件夹则检查备份文件数量
-        backup_files = f'/ql/{path}'
+        backup_files = f'{run_path}{path}'
         files_all = os.listdir(backup_files)  # backup_files中的所有文件
         logger.info(f'当前备份文件 {len(files_all)}/{QLBK_MAX_FLIES}')
         files_num = len(files_all)
@@ -159,9 +159,10 @@ if __name__ == '__main__':
     logger.info('---------' + str(nowtime) + ' 备份程序开始执行------------')
     if os.path.exists('/ql/data/'):
         logger.info('检测到data目录，切换运行目录至 /ql/data/')
-        os.chdir('/ql/data/')
+        run_path = '/ql/data/'
     else:
-        os.chdir('/ql/')  # 设置运行目录
+        run_path = '/ql/'
+    os.chdir(run_path)  # 设置运行目录
     logger.info('登录阿里云盘')
     try:
         ali = Aligo(level=logging.INFO, show=show)

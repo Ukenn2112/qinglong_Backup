@@ -40,6 +40,8 @@
 
   3. 删除之前的qinglong容器重新创建映射以下对应目录：
 
+  - qinglong 2.11.3 及其之前版本
+
         ```
         /ql/config
         /ql/db
@@ -49,8 +51,13 @@
         /ql/jbot (如有jbot)
         /ql/ninja (如有ninja)
         ```
+  - qinglong 2.12.0 及其之后版本
 
-   例（docker-compose） `+ 号后为可选,如果备份文件里有这些文件则加上`：
+        ```
+        /ql/data
+        ```
+
+   例 qinglong 2.11.3（docker-compose） `+ 号后为可选,如果备份文件里有这些文件则加上`：
 
    ```diff
    version: "3"
@@ -77,7 +84,7 @@
    +     - /ql/jbot:/ql/jbot  (如有ninja)
    ```
 
-   例（docker-run） `+ 号后为可选 解释同上`：
+   例 qinglong 2.11.3（docker-run） `+ 号后为可选 解释同上`：
 
    ```diff
    docker run -dit \
