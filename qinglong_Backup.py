@@ -28,7 +28,7 @@ def env(key):
 
 
 QLBK_EXCLUDE_NAMES = ['log', '.git', '.github',
-                      'node_modules', 'backups']  # 排除目录名
+                      'node_modules', 'backups', '.pnpm-store']  # 排除目录名
 if env("QLBK_EXCLUDE_NAMES"):
     QLBK_EXCLUDE_NAMES = env("QLBK_EXCLUDE_NAMES")
     logger.info(f'检测到设置变量 {QLBK_EXCLUDE_NAMES}')
@@ -157,7 +157,11 @@ def check_files(files_all, files_num, backup_files, QLBK_MAX_FLIES):
 if __name__ == '__main__':
     nowtime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
     logger.info('---------' + str(nowtime) + ' 备份程序开始执行------------')
-    os.chdir('/ql/')  # 设置运行目录
+    if os.path.exists('/ql/data/'):
+        logger.info('检测到data目录，切换运行目录至 /ql/data/')
+        os.chdir('/ql/data/')
+    else:
+        os.chdir('/ql/')  # 设置运行目录
     logger.info('登录阿里云盘')
     try:
         ali = Aligo(level=logging.INFO, show=show)
